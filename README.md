@@ -46,7 +46,7 @@ cd ShadowProxy
 ### **2️⃣ Give Execute Permission**
 
 ```bash
-chmod +x shadowproxy.sh
+chmod +x shadowproxy_setup.sh
 ```
 
 ---
@@ -56,7 +56,7 @@ chmod +x shadowproxy.sh
 ### **Run the Script**
 
 ```bash
-./shadowproxy.sh
+./shadowproxy_setup.sh
 ```
 
 This will:
