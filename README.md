@@ -39,7 +39,7 @@ Before running the script, make sure you have the following:
 ### **1️⃣ Clone the Repository**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ShadowProxy.git
+git clone https://github.com/GraveEaterMadison/ShadowProxy.git
 cd ShadowProxy
 ```
 
