@@ -2,7 +2,7 @@
 
 LOG_FILE="tor_proxy_setup.log"
 
-echo "[INFO] Setting up Tor proxy with User-Agent rotation for Reddit Karma Bot only..." | tee -a "$LOG_FILE"
+echo "[INFO] Setting up Tor proxy with User-Agent rotation ..." | tee -a "$LOG_FILE"
 
 # Function to log errors
 log_error() {
