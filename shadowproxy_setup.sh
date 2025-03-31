@@ -2,7 +2,7 @@
 
 LOG_FILE="tor_proxy_setup.log"
 
-echo "[INFO] Setting up Tor proxy with User-Agent rotation ..." | tee -a "$LOG_FILE"
+echo "[INFO] Setting up Tor proxy with advanced anonymity features..." | tee -a "$LOG_FILE"
 
 # Function to log errors
 log_error() {
@@ -16,9 +16,9 @@ install_packages() {
     if ! command -v tor &> /dev/null; then
         echo "[INFO] Installing Tor..." | tee -a "$LOG_FILE"
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            sudo apt update && sudo apt install -y tor torsocks || log_error "Failed to install Tor."
+            sudo apt update && sudo apt install -y tor torsocks proxychains4 macchanger || log_error "Failed to install dependencies."
         elif [[ "$OSTYPE" == "darwin"* ]]; then
-            brew install tor torsocks || log_error "Failed to install Tor."
+            brew install tor torsocks proxychains-ng macchanger || log_error "Failed to install dependencies."
         else
             log_error "Unsupported OS. Install Tor manually."
         fi
@@ -27,34 +27,36 @@ install_packages() {
     fi
 }
 
-# Configure Tor for proxy usage
+# Configure Tor with Obfs4 bridges and multiple SOCKS ports
 configure_tor() {
     TORRC_PATH="/etc/tor/torrc"
-    if ! grep -q "SocksPort 9050" "$TORRC_PATH"; then
-        echo "[INFO] Configuring Tor..." | tee -a "$LOG_FILE"
-        sudo bash -c "cat > $TORRC_PATH" <<EOL
+    echo "[INFO] Configuring Tor for better anonymity..." | tee -a "$LOG_FILE"
+    sudo bash -c "cat > $TORRC_PATH" <<EOL
+UseBridges 1
+ClientTransportPlugin obfs4 exec /usr/bin/obfs4proxy
+Bridge obfs4 <BRIDGE_IP>:<PORT> <FINGERPRINT>
 SocksPort 9050
+SocksPort 9052
 ControlPort 9051
 CookieAuthentication 1
 RunAsDaemon 1
 Log notice file /var/log/tor/notices.log
+ExitNodes {de},{nl},{ca}  # Germany, Netherlands, Canada for better anonymity
+StrictNodes 1
 EOL
-        echo "[INFO] Tor configuration updated." | tee -a "$LOG_FILE"
-    fi
-    
-    # Restart Tor service
+    echo "[INFO] Tor configuration updated." | tee -a "$LOG_FILE"
     echo "[INFO] Restarting Tor service..." | tee -a "$LOG_FILE"
     sudo systemctl restart tor || log_error "Failed to restart Tor service."
     sleep 5
 }
 
-# Function to renew Tor IP every 10 minutes
+# Function to renew Tor IP more frequently
 renew_tor_ip() {
     while true; do
         echo "[INFO] Changing Tor IP..." | tee -a "$LOG_FILE"
         COOKIE=$(sudo cat /var/lib/tor/control_auth_cookie | tr -d '\n')
         (echo -e "AUTHENTICATE \"$COOKIE\"\r\nSIGNAL NEWNYM\r\nQUIT") | nc localhost 9051 || log_error "Tor IP change failed."
-        sleep 600  # Wait 10 minutes before next change
+        sleep $((120 + RANDOM % 120))  # Randomize between 2-4 minutes
     done
 }
 
@@ -76,10 +78,19 @@ randomize_user_agent() {
     done
 }
 
+# Function to change MAC address for additional anonymity
+change_mac() {
+    echo "[INFO] Changing MAC address..." | tee -a "$LOG_FILE"
+    sudo ifconfig eth0 down
+    sudo macchanger -r eth0 || log_error "MAC address change failed."
+    sudo ifconfig eth0 up
+    echo "[INFO] MAC address changed successfully." | tee -a "$LOG_FILE"
+}
+
 # Function to check if Tor proxy is working
 check_tor_proxy() {
     echo "[INFO] Checking Tor proxy connection..." | tee -a "$LOG_FILE"
-    if torsocks curl --silent --fail https://check.torproject.org/ | grep -q "Congratulations"; then
+    if proxychains curl --silent --fail https://check.torproject.org/ | grep -q "Congratulations"; then
         echo "[SUCCESS] Tor proxy is working!" | tee -a "$LOG_FILE"
     else
         log_error "Tor proxy test failed. Check Tor settings."
@@ -89,6 +100,7 @@ check_tor_proxy() {
 # === Main Execution ===
 install_packages
 configure_tor
+change_mac  # Change MAC address for better anonymity
 
 # Start IP rotation and User-Agent randomization in the background
 renew_tor_ip &
@@ -98,5 +110,5 @@ randomize_user_agent &
 sleep 5
 check_tor_proxy
 
-echo "[INFO] Tor proxy is running with User-Agent rotation." | tee -a "$LOG_FILE"
-echo "[INFO] SOCKS5 Proxy: 127.0.0.1:9050" | tee -a "$LOG_FILE"
+echo "[INFO] Tor proxy is running with enhanced anonymity features." | tee -a "$LOG_FILE"
+echo "[INFO] SOCKS5 Proxies: 127.0.0.1:9050, 127.0.0.1:9052" | tee -a "$LOG_FILE"
